@@ -1,0 +1,5 @@
+import { Download, Smartphone, X, ShieldCheck } from 'lucide-react';
+export default function DownloadAPKModal({open,onClose}:{open:boolean;onClose:()=>void}) {
+ if(!open)return null;
+ return <div className="modal-backdrop" onClick={onClose}><div className="modal glass-card" onClick={e=>e.stopPropagation()}><button className="modal-close icon-btn" onClick={onClose}><X size={18}/></button><div className="modal-icon"><Smartphone size={26}/></div><h2>AuraSync for Android</h2><p>Take your workspace with you. Tasks and finance records stay available offline on this device.</p><div className="modal-note"><ShieldCheck size={17}/><span>Install only APKs built and signed by a source you trust.</span></div><a className="primary-btn download-link" href="/downloads/aurasync.apk" download="AuraSync.apk" onClick={onClose}><Download size={17}/> Download mobile APK</a><small className="modal-foot">If no APK is available yet, build the Android release and add it to <code>public/downloads/aurasync.apk</code>.</small></div></div>;
+}
