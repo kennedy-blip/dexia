@@ -27,7 +27,18 @@ npm run android:sync
 npm run android:open
 ```
 
-In Android Studio, create a signed release APK. Copy the signed APK to `public/downloads/aurasync.apk`, commit it, and redeploy the web app. Then set `APK_READY = true` in `src/components/DownloadAPKModal.tsx` to enable the in-app download link. The download is deliberately disabled until a real APK exists.
+## Automated signed APK publishing
+
+The repository includes a manual GitHub Actions workflow at **Actions → Android signed release → Run workflow**. Before running it, configure these four Actions repository secrets under **Settings → Secrets and variables → Actions**:
+
+- `ANDROID_KEYSTORE_BASE64`: your release keystore file encoded as Base64.
+- `ANDROID_KEYSTORE_PASSWORD`: keystore password.
+- `ANDROID_KEY_ALIAS`: key alias.
+- `ANDROID_KEY_PASSWORD`: key password.
+
+Keep the keystore and passwords private; never commit them or paste them into source files. Use the same release keystore for future updates so Android can recognize later builds as updates to the installed app. The workflow builds an APK using Android's `apksigner`, copies it to `public/downloads/aurasync.apk`, enables the download modal, and pushes the result to `main`. A connected Vercel Git deployment should then redeploy automatically.
+
+If you prefer a manual build, create a signed release APK in Android Studio, copy it to `public/downloads/aurasync.apk`, and set `APK_READY = true` in `src/components/DownloadAPKModal.tsx` before committing. The download remains disabled until an actual APK is present.
 
 ## Local data and important security notes
 
