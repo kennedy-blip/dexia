@@ -44,9 +44,13 @@ jobs:
           test "$LICENSE_STATUS" -eq 0 || (echo "Android SDK license acceptance failed" && exit "$LICENSE_STATUS")
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Install dependencies and prepare Capacitor Android
+      - name: Install dependencies and build web assets
         run: |
           npm install
+          npm run build
+
+      - name: Prepare Capacitor Android
+        run: |
           npx cap add android
           npx cap sync android
 
