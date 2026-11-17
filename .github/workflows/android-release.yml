@@ -1,0 +1,70 @@
+name: Android signed release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies and prepare Capacitor Android
+        run: |
+          npm install
+          npx cap add android
+          npx cap sync android
+
+      - name: Restore Android signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64" || (echo "Missing ANDROID_KEYSTORE_BASE64 repository secret" && exit 1)
+          mkdir -p "$RUNNER_TEMP/android-signing"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/android-signing/release.jks"
+
+      - name: Build signed release APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/android-signing/release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_PASSWORD" || (echo "Missing ANDROID_KEYSTORE_PASSWORD repository secret" && exit 1)
+          test -n "$ANDROID_KEY_ALIAS" || (echo "Missing ANDROID_KEY_ALIAS repository secret" && exit 1)
+          test -n "$ANDROID_KEY_PASSWORD" || (echo "Missing ANDROID_KEY_PASSWORD repository secret" && exit 1)
+          npx cap build android --androidreleasetype APK --keystorepath "$ANDROID_KEYSTORE_PATH" --keystorepass "$ANDROID_KEYSTORE_PASSWORD" --keystorealias "$ANDROID_KEY_ALIAS" --keystorealiaspass "$ANDROID_KEY_PASSWORD"
+
+      - name: Publish APK into the Vercel web app
+        run: |
+          mkdir -p public/downloads
+          APK="$(find android/app/build/outputs/apk -type f -name '*.apk' | head -n 1)"
+          test -n "$APK" || (echo "Release APK was not produced" && exit 1)
+          cp "$APK" public/downloads/aurasync.apk
+          sed -i 's/const APK_READY = false;/const APK_READY = true;/' src/components/DownloadAPKModal.tsx
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/downloads/aurasync.apk src/components/DownloadAPKModal.tsx
+          git commit -m "build: publish signed Android APK"
+          git push origin HEAD:main
